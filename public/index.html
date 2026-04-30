@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp Auto Sender - Cloud Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        body {
+            background-color: #f3f4f6;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center py-10 px-4">
+
+    <div class="max-w-2xl w-full bg-white rounded-2xl shadow-xl overflow-hidden">
+        <div class="bg-green-600 px-6 py-4 flex justify-between items-center">
+            <h1 class="text-white text-xl font-bold">WhatsApp Bulk Bot</h1>
+            <span id="status-badge" class="px-3 py-1 bg-yellow-400 text-yellow-900 rounded-full text-xs font-bold">Checking Status...</span>
+        </div>
+
+        <div class="p-6">
+            <!-- QR Code Section -->
+            <div id="qr-section" class="hidden flex-col items-center justify-center p-8 border-2 border-dashed border-gray-300 rounded-lg mb-6 bg-gray-50">
+                <h2 class="text-lg font-semibold text-gray-700 mb-2">Scan QR Code to Connect</h2>
+                <p class="text-sm text-gray-500 mb-4 text-center">Open WhatsApp on your phone > Linked Devices > Link a Device</p>
+                <div id="qrcode" class="p-4 bg-white rounded shadow-sm border"></div>
+            </div>
+
+            <!-- Main Form -->
+            <form id="bot-form" class="space-y-6 hidden">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Contacts CSV File</label>
+                    <input type="file" id="csvFile" accept=".csv" required
+                        class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100 border border-gray-300 rounded-md p-2 cursor-pointer">
+                    <p class="text-xs text-gray-400 mt-1">Columns needed: number, name, business</p>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Message Template</label>
+                    <textarea id="template" rows="5" required
+                        class="w-full border border-gray-300 rounded-md p-3 focus:ring-green-500 focus:border-green-500"
+                        placeholder="Hi {name}, from {business}...">Assalam o Alaikum {name} bhai! 👋&#10;&#10;Main yahan se baat kar raha hoon...&#10;&#10;Agar interest ho toh batayen!</textarea>
+                </div>
+
+                <div class="flex space-x-4">
+                    <div class="flex-1">
+                        <label class="block text-sm font-medium text-gray-700">Min Delay (sec)</label>
+                        <input type="number" id="minDelay" value="15" required class="mt-1 block w-full border border-gray-300 rounded-md p-2">
+                    </div>
+                    <div class="flex-1">
+                        <label class="block text-sm font-medium text-gray-700">Max Delay (sec)</label>
+                        <input type="number" id="maxDelay" value="30" required class="mt-1 block w-full border border-gray-300 rounded-md p-2">
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full bg-green-600 text-white font-bold py-3 px-4 rounded-md hover:bg-green-700 transition duration-300 shadow-md">
+                    🚀 Start Sending Messages
+                </button>
+            </form>
+            
+            <div id="response-msg" class="mt-4 text-center font-medium hidden"></div>
+        </div>
+    </div>
+
+    <script>
+        const statusBadge = document.getElementById('status-badge');
+        const qrSection = document.getElementById('qr-section');
+        const form = document.getElementById('bot-form');
+        const qrcodeDiv = document.getElementById('qrcode');
+        const responseMsg = document.getElementById('response-msg');
+
+        let qrCodeInstance = null;
+
+        async function checkStatus() {
+            try {
+                const res = await fetch('/api/status');
+                const data = await res.json();
+
+                if (data.isReady) {
+                    statusBadge.textContent = '🟢 CONNECTED';
+                    statusBadge.className = 'px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-bold';
+                    qrSection.classList.add('hidden');
+                    form.classList.remove('hidden');
+                } else if (data.qrCodeData) {
+                    statusBadge.textContent = '🔴 WAITING FOR SCAN';
+                    statusBadge.className = 'px-3 py-1 bg-red-100 text-red-800 rounded-full text-xs font-bold';
+                    form.classList.add('hidden');
+                    qrSection.classList.remove('hidden');
+                    
+                    if (!qrCodeInstance) {
+                        qrcodeDiv.innerHTML = '';
+                        qrCodeInstance = new QRCode(qrcodeDiv, {
+                            text: data.qrCodeData,
+                            width: 200,
+                            height: 200,
+                        });
+                    } else {
+                        qrCodeInstance.clear();
+                        qrCodeInstance.makeCode(data.qrCodeData);
+                    }
+                } else {
+                    statusBadge.textContent = '🟡 STARTING UP...';
+                }
+            } catch (err) {
+                console.error('Error checking status:', err);
+            }
+        }
+
+        // Check status every 3 seconds
+        setInterval(checkStatus, 3000);
+        checkStatus();
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            formData.append('csvFile', document.getElementById('csvFile').files[0]);
+            formData.append('template', document.getElementById('template').value);
+            formData.append('minDelay', document.getElementById('minDelay').value);
+            formData.append('maxDelay', document.getElementById('maxDelay').value);
+
+            const btn = form.querySelector('button');
+            btn.disabled = true;
+            btn.textContent = 'Processing...';
+
+            try {
+                const res = await fetch('/api/send', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await res.json();
+                
+                responseMsg.classList.remove('hidden', 'text-red-600');
+                responseMsg.classList.add('text-green-600');
+                responseMsg.textContent = data.message || 'Started successfully!';
+                
+            } catch (err) {
+                responseMsg.classList.remove('hidden', 'text-green-600');
+                responseMsg.classList.add('text-red-600');
+                responseMsg.textContent = 'Error: ' + err.message;
+            } finally {
+                setTimeout(() => {
+                    btn.disabled = false;
+                    btn.textContent = '🚀 Start Sending Messages';
+                }, 3000);
+            }
+        });
+    </script>
+</body>
+</html>
