@@ -1,21 +1,27 @@
 const express = require('express');
 const { Client, LocalAuth } = require('whatsapp-web.js');
+const { IgApiClient } = require('instagram-private-api');
+const qrcode = require('qrcode');
 const multer = require('multer');
 const csv = require('csv-parser');
 const fs = require('fs');
 const cors = require('cors');
+const path = require('path');
 
 const app = express();
+const port = process.env.PORT || 7860;
+
 app.use(cors());
-app.use(express.static('public'));
 app.use(express.json());
+app.use(express.static('public'));
 
 const upload = multer({ dest: 'uploads/' });
 
-let qrCodeData = null;
-let isReady = false;
+// --- WHATSAPP SETUP ---
+let qrCodeData = '';
+let waStatus = 'Disconnected';
 
-const client = new Client({
+const waClient = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: { 
         executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || null,
@@ -23,81 +29,90 @@ const client = new Client({
     }
 });
 
-client.on('qr', (qr) => {
-    console.log('QR RECEIVED', qr);
+waClient.on('qr', (qr) => {
     qrCodeData = qr;
+    waStatus = 'Scan Required';
 });
 
-client.on('ready', () => {
-    console.log('Client is ready!');
-    isReady = true;
-    qrCodeData = null;
+waClient.on('ready', () => {
+    waStatus = 'Connected';
+    qrCodeData = '';
 });
 
-client.on('disconnected', () => {
-    console.log('Client disconnected!');
-    isReady = false;
+waClient.initialize();
+
+// --- INSTAGRAM SETUP ---
+const ig = new IgApiClient();
+let igStatus = 'Not Logged In';
+let igUser = null;
+
+// --- API ROUTES ---
+
+// WhatsApp Status
+app.get('/api/wa/status', (req, res) => {
+    res.json({ status: waStatus, qr: qrCodeData });
 });
 
-client.initialize();
-
-app.get('/api/status', (req, res) => {
-    res.json({ isReady, qrCodeData });
-});
-
-app.post('/api/send', upload.single('csvFile'), async (req, res) => {
-    if (!isReady) {
-        return res.status(400).json({ error: 'WhatsApp client is not ready. Please scan QR first.' });
+// Instagram Login
+app.post('/api/ig/login', async (req, res) => {
+    const { username, password } = req.body;
+    try {
+        ig.state.generateDevice(username);
+        const auth = await ig.account.login(username, password);
+        igUser = auth;
+        igStatus = `Logged in as ${username}`;
+        res.json({ success: true, user: username });
+    } catch (err) {
+        res.status(400).json({ success: false, error: err.message });
     }
+});
 
-    const { template, minDelay, maxDelay } = req.body;
-    const file = req.file;
+app.get('/api/ig/status', (req, res) => {
+    res.json({ status: igStatus });
+});
 
-    if (!file) {
-        return res.status(400).json({ error: 'CSV file is required.' });
-    }
+// Sending Logic
+app.post('/api/send', upload.single('csv'), (req, res) => {
+    const { platform, template, minDelay, maxDelay } = req.body;
+    const results = [];
+    const filePath = req.file.path;
 
-    const contacts = [];
-    fs.createReadStream(file.path)
+    fs.createReadStream(filePath)
         .pipe(csv())
-        .on('data', (row) => contacts.push(row))
+        .on('data', (data) => results.push(data))
         .on('end', async () => {
-            res.json({ message: 'Automation started in the background.', total: contacts.length });
+            res.json({ success: true, message: `Starting ${platform} automation for ${results.length} contacts.` });
             
-            // Background sending process
-            for (let i = 0; i < contacts.length; i++) {
-                const row = contacts[i];
-                let number = row.number ? row.number.trim() : '';
-                const name = row.name ? row.name.trim() : '';
-                const business = row.business ? row.business.trim() : '';
+            for (let i = 0; i < results.length; i++) {
+                const contact = results[i];
+                let msg = template;
+                
+                // Dynamic replacement
+                Object.keys(contact).forEach(key => {
+                    msg = msg.replace(new RegExp(`{${key}}`, 'g'), contact[key]);
+                });
 
-                if (number) {
-                    if (number.startsWith('+')) {
-                        number = number.replace('+', '') + '@c.us';
-                    } else {
-                        number = number + '@c.us';
+                try {
+                    if (platform === 'whatsapp' && waStatus === 'Connected') {
+                        const number = contact.Phone || contact.number;
+                        const finalNum = number.includes('@c.us') ? number : `${number.replace('+', '')}@c.us`;
+                        await waClient.sendMessage(finalNum, msg);
+                    } else if (platform === 'instagram' && igUser) {
+                        const targetUser = contact['Instagram Username'] || contact.username;
+                        const userId = await ig.user.getIdByUsername(targetUser.replace('@', ''));
+                        await ig.direct.sendText(userId, msg);
                     }
-
-                    const message = template.replace('{name}', name).replace('{business}', business);
-                    
-                    try {
-                        await client.sendMessage(number, message);
-                        console.log(`Sent to ${name} (${number})`);
-                    } catch (error) {
-                        console.error(`Failed to send to ${name}:`, error);
-                    }
+                } catch (err) {
+                    console.error(`Error sending to ${contact.name || contact['Doctor Name']}:`, err.message);
                 }
 
-                // Random delay
-                const delay = Math.floor(Math.random() * (parseInt(maxDelay) - parseInt(minDelay) + 1) + parseInt(minDelay)) * 1000;
-                await new Promise(r => setTimeout(r, delay));
+                const delay = Math.floor(Math.random() * (maxDelay - minDelay + 1) + parseInt(minDelay));
+                await new Promise(resolve => setTimeout(resolve, delay * 1000));
             }
-            console.log('Bulk sending completed!');
-            fs.unlinkSync(file.path); // Clean up
+            fs.unlinkSync(filePath);
         });
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+app.listen(port, () => {
+    console.log(`Server running at http://localhost:${port}`);
 });

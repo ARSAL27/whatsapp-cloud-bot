@@ -3,152 +3,154 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WhatsApp Auto Sender - Cloud Edition</title>
+    <title>Ultimate Outreach Cloud Bot</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
-        body {
-            background-color: #f3f4f6;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap');
+        body { font-family: 'Outfit', sans-serif; background: #0f172a; color: white; }
+        .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .btn-wa { background: #25D366; transition: 0.3s; }
+        .btn-wa:hover { background: #128C7E; transform: translateY(-3px); }
+        .btn-ig { background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); transition: 0.3s; }
+        .btn-ig:hover { filter: brightness(1.2); transform: translateY(-3px); }
     </style>
 </head>
-<body class="min-h-screen flex items-center justify-center py-10 px-4">
+<body class="min-h-screen flex flex-col items-center justify-center p-4">
 
-    <div class="max-w-2xl w-full bg-white rounded-2xl shadow-xl overflow-hidden">
-        <div class="bg-green-600 px-6 py-4 flex justify-between items-center">
-            <h1 class="text-white text-xl font-bold">WhatsApp Bulk Bot</h1>
-            <span id="status-badge" class="px-3 py-1 bg-yellow-400 text-yellow-900 rounded-full text-xs font-bold">Checking Status...</span>
-        </div>
-
-        <div class="p-6">
-            <!-- QR Code Section -->
-            <div id="qr-section" class="hidden flex-col items-center justify-center p-8 border-2 border-dashed border-gray-300 rounded-lg mb-6 bg-gray-50">
-                <h2 class="text-lg font-semibold text-gray-700 mb-2">Scan QR Code to Connect</h2>
-                <p class="text-sm text-gray-500 mb-4 text-center">Open WhatsApp on your phone > Linked Devices > Link a Device</p>
-                <div id="qrcode" class="p-4 bg-white rounded shadow-sm border"></div>
+    <!-- HOME SCREEN -->
+    <div id="home-screen" class="text-center">
+        <h1 class="text-5xl font-extrabold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-emerald-400">
+            Ultimate Cloud Bot
+        </h1>
+        <p class="text-slate-400 mb-12">Select the platform you want to automate today</p>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl">
+            <!-- WhatsApp Card -->
+            <div onclick="showSection('whatsapp')" class="glass p-10 rounded-3xl cursor-pointer hover:bg-white/10 transition-all border-emerald-500/30 border-2">
+                <div class="text-6xl mb-4">🟢</div>
+                <h2 class="text-3xl font-bold mb-2">WhatsApp</h2>
+                <p class="text-slate-400">Bulk send via QR scan</p>
             </div>
-
-            <!-- Main Form -->
-            <form id="bot-form" class="space-y-6 hidden">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Contacts CSV File</label>
-                    <input type="file" id="csvFile" accept=".csv" required
-                        class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100 border border-gray-300 rounded-md p-2 cursor-pointer">
-                    <p class="text-xs text-gray-400 mt-1">Columns needed: number, name, business</p>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Message Template</label>
-                    <textarea id="template" rows="5" required
-                        class="w-full border border-gray-300 rounded-md p-3 focus:ring-green-500 focus:border-green-500"
-                        placeholder="Hi {name}, from {business}...">Assalam o Alaikum {name} bhai! 👋&#10;&#10;Main yahan se baat kar raha hoon...&#10;&#10;Agar interest ho toh batayen!</textarea>
-                </div>
-
-                <div class="flex space-x-4">
-                    <div class="flex-1">
-                        <label class="block text-sm font-medium text-gray-700">Min Delay (sec)</label>
-                        <input type="number" id="minDelay" value="15" required class="mt-1 block w-full border border-gray-300 rounded-md p-2">
-                    </div>
-                    <div class="flex-1">
-                        <label class="block text-sm font-medium text-gray-700">Max Delay (sec)</label>
-                        <input type="number" id="maxDelay" value="30" required class="mt-1 block w-full border border-gray-300 rounded-md p-2">
-                    </div>
-                </div>
-
-                <button type="submit" class="w-full bg-green-600 text-white font-bold py-3 px-4 rounded-md hover:bg-green-700 transition duration-300 shadow-md">
-                    🚀 Start Sending Messages
-                </button>
-            </form>
             
-            <div id="response-msg" class="mt-4 text-center font-medium hidden"></div>
+            <!-- Instagram Card -->
+            <div onclick="showSection('instagram')" class="glass p-10 rounded-3xl cursor-pointer hover:bg-white/10 transition-all border-pink-500/30 border-2">
+                <div class="text-6xl mb-4">🟣</div>
+                <h2 class="text-3xl font-bold mb-2">Instagram</h2>
+                <p class="text-slate-400">Direct DM via Login</p>
+            </div>
         </div>
     </div>
 
+    <!-- WHATSAPP SECTION -->
+    <div id="wa-section" class="hidden w-full max-w-2xl">
+        <button onclick="showSection('home')" class="mb-6 text-slate-400 hover:text-white">← Back to Home</button>
+        <div class="glass p-8 rounded-3xl">
+            <h2 class="text-3xl font-bold mb-6 text-emerald-400">WhatsApp Outreach</h2>
+            
+            <div id="wa-status" class="mb-6 p-4 rounded-xl bg-slate-800 text-center font-bold">Checking Status...</div>
+            
+            <div id="qr-container" class="flex justify-center mb-6 bg-white p-4 rounded-2xl hidden">
+                <div id="qrcode"></div>
+            </div>
+
+            <div id="wa-form" class="space-y-4">
+                <input type="file" id="wa-csv" class="w-full bg-slate-800 p-3 rounded-xl border border-slate-700">
+                <textarea id="wa-template" placeholder="Hello {Doctor Name}! Saw you in {City}." class="w-full h-32 bg-slate-800 p-4 rounded-xl border border-slate-700"></textarea>
+                <div class="flex gap-4">
+                    <input type="number" id="wa-min" placeholder="Min Delay" value="30" class="w-1/2 bg-slate-800 p-3 rounded-xl">
+                    <input type="number" id="wa-max" placeholder="Max Delay" value="60" class="w-1/2 bg-slate-800 p-3 rounded-xl">
+                </div>
+                <button onclick="startSending('whatsapp')" class="w-full btn-wa py-4 rounded-xl font-bold text-xl shadow-lg shadow-emerald-500/20">🚀 Start WhatsApp Campaign</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- INSTAGRAM SECTION -->
+    <div id="ig-section" class="hidden w-full max-w-2xl">
+        <button onclick="showSection('home')" class="mb-6 text-slate-400 hover:text-white">← Back to Home</button>
+        <div class="glass p-8 rounded-3xl">
+            <h2 class="text-3xl font-bold mb-6 text-pink-400">Instagram Outreach</h2>
+            
+            <div id="ig-status" class="mb-6 p-4 rounded-xl bg-slate-800 text-center font-bold">Not Logged In</div>
+
+            <div id="ig-login-form" class="space-y-4 mb-8 p-6 bg-slate-800/50 rounded-2xl">
+                <input type="text" id="ig-user" placeholder="Instagram Username" class="w-full bg-slate-800 p-3 rounded-xl">
+                <input type="password" id="ig-pass" placeholder="Password" class="w-full bg-slate-800 p-3 rounded-xl">
+                <button onclick="igLogin()" class="w-full bg-slate-600 hover:bg-slate-500 py-3 rounded-xl font-bold">Login to Instagram</button>
+            </div>
+
+            <div class="space-y-4">
+                <input type="file" id="ig-csv" class="w-full bg-slate-800 p-3 rounded-xl">
+                <textarea id="ig-template" placeholder="Hi {Doctor Name}!" class="w-full h-32 bg-slate-800 p-4 rounded-xl border border-slate-700"></textarea>
+                <div class="flex gap-4">
+                    <input type="number" id="ig-min" placeholder="Min Delay" value="300" class="w-1/2 bg-slate-800 p-3 rounded-xl">
+                    <input type="number" id="ig-max" placeholder="Max Delay" value="600" class="w-1/2 bg-slate-800 p-3 rounded-xl">
+                </div>
+                <button onclick="startSending('instagram')" class="w-full btn-ig py-4 rounded-xl font-bold text-xl shadow-lg shadow-pink-500/20">🚀 Start Instagram Campaign</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script>
-        const statusBadge = document.getElementById('status-badge');
-        const qrSection = document.getElementById('qr-section');
-        const form = document.getElementById('bot-form');
-        const qrcodeDiv = document.getElementById('qrcode');
-        const responseMsg = document.getElementById('response-msg');
+        function showSection(id) {
+            ['home-screen', 'wa-section', 'ig-section'].forEach(s => document.getElementById(s).classList.add('hidden'));
+            document.getElementById(id + '-section').classList.remove('hidden');
+        }
 
-        let qrCodeInstance = null;
-
-        async function checkStatus() {
-            try {
-                const res = await fetch('/api/status');
-                const data = await res.json();
-
-                if (data.isReady) {
-                    statusBadge.textContent = '🟢 CONNECTED';
-                    statusBadge.className = 'px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-bold';
-                    qrSection.classList.add('hidden');
-                    form.classList.remove('hidden');
-                } else if (data.qrCodeData) {
-                    statusBadge.textContent = '🔴 WAITING FOR SCAN';
-                    statusBadge.className = 'px-3 py-1 bg-red-100 text-red-800 rounded-full text-xs font-bold';
-                    form.classList.add('hidden');
-                    qrSection.classList.remove('hidden');
-                    
-                    if (!qrCodeInstance) {
-                        qrcodeDiv.innerHTML = '';
-                        qrCodeInstance = new QRCode(qrcodeDiv, {
-                            text: data.qrCodeData,
-                            width: 200,
-                            height: 200,
-                        });
-                    } else {
-                        qrCodeInstance.clear();
-                        qrCodeInstance.makeCode(data.qrCodeData);
-                    }
-                } else {
-                    statusBadge.textContent = '🟡 STARTING UP...';
-                }
-            } catch (err) {
-                console.error('Error checking status:', err);
+        async function updateWAStatus() {
+            const res = await fetch('/api/wa/status');
+            const data = await res.json();
+            document.getElementById('wa-status').innerText = data.status;
+            const qrDiv = document.getElementById('qr-container');
+            if (data.qr) {
+                qrDiv.classList.remove('hidden');
+                document.getElementById('qrcode').innerHTML = '';
+                new QRCode(document.getElementById('qrcode'), data.qr);
+            } else {
+                qrDiv.classList.add('hidden');
             }
         }
 
-        // Check status every 3 seconds
-        setInterval(checkStatus, 3000);
-        checkStatus();
-
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const formData = new FormData();
-            formData.append('csvFile', document.getElementById('csvFile').files[0]);
-            formData.append('template', document.getElementById('template').value);
-            formData.append('minDelay', document.getElementById('minDelay').value);
-            formData.append('maxDelay', document.getElementById('maxDelay').value);
-
-            const btn = form.querySelector('button');
-            btn.disabled = true;
-            btn.textContent = 'Processing...';
-
-            try {
-                const res = await fetch('/api/send', {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                const data = await res.json();
-                
-                responseMsg.classList.remove('hidden', 'text-red-600');
-                responseMsg.classList.add('text-green-600');
-                responseMsg.textContent = data.message || 'Started successfully!';
-                
-            } catch (err) {
-                responseMsg.classList.remove('hidden', 'text-green-600');
-                responseMsg.classList.add('text-red-600');
-                responseMsg.textContent = 'Error: ' + err.message;
-            } finally {
-                setTimeout(() => {
-                    btn.disabled = false;
-                    btn.textContent = '🚀 Start Sending Messages';
-                }, 3000);
+        async function igLogin() {
+            const user = document.getElementById('ig-user').value;
+            const pass = document.getElementById('ig-pass').value;
+            const res = await fetch('/api/ig/login', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({username: user, password: pass})
+            });
+            const data = await res.json();
+            if (data.success) {
+                document.getElementById('ig-status').innerText = 'Logged in as ' + user;
+                alert('Instagram Login Successful!');
+            } else {
+                alert('Login Failed: ' + data.error);
             }
-        });
+        }
+
+        async function startSending(platform) {
+            const csvFile = document.getElementById(platform + '-csv').files[0];
+            const template = document.getElementById(platform + '-template').value;
+            const minDelay = document.getElementById(platform + '-min').value;
+            const maxDelay = document.getElementById(platform + '-max').value;
+
+            if (!csvFile) return alert('Please select CSV file!');
+
+            const formData = new FormData();
+            formData.append('csv', csvFile);
+            formData.append('platform', platform);
+            formData.append('template', template);
+            formData.append('minDelay', minDelay);
+            formData.append('maxDelay', maxDelay);
+
+            const res = await fetch('/api/send', { method: 'POST', body: formData });
+            const data = await res.json();
+            alert(data.message);
+        }
+
+        setInterval(updateWAStatus, 5000);
+        updateWAStatus();
     </script>
 </body>
 </html>

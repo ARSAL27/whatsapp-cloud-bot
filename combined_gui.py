@@ -14,31 +14,67 @@ TRACKING_FILE = "bot_tracking.json"
 IG_SESSION_FILE = "ig_session.json"
 SETTINGS_FILE = "settings.json"
 
+import urllib.request
+import json
+import sys
 import uuid
-import tkinter.simpledialog as simpledialog
 
-ALLOWED_PC_ID = 53132166905220
+# --- REMOTE CEO PANEL SETTINGS ---
+# Change this to your server's IP if hosting remotely
+ADMIN_PANEL_URL = "http://127.0.0.1:5000/api/verify/"
+# ---------------------------------
 
 class CombinedBotGUI:
     def __init__(self, root):
         self.root = root
         self.root.withdraw() # Hide root temporarily
         
-        # Security Checks (Hardware Lock)
-        if uuid.getnode() != ALLOWED_PC_ID:
-            messagebox.showerror("Unauthorized Device", "This software is licensed only for the original computer.\nContact the developer.")
-            self.root.destroy()
-            sys.exit()
+        # Security Check (Hardware Lock via CEO Panel)
+        current_hwid = str(uuid.getnode())
+        try:
+            # Check remote license
+            response = urllib.request.urlopen(f"{ADMIN_PANEL_URL}{current_hwid}", timeout=5)
+            data = json.loads(response.read().decode())
             
-        # Password Check
-        pwd = simpledialog.askstring("Security Check", "Enter Master Password to access bot:", show='*')
-        if pwd != "arsal123":
-            messagebox.showerror("Access Denied", "Incorrect Password!")
-            self.root.destroy()
-            sys.exit()
+            if data.get("status") == "success" and data.get("is_active"):
+                self.user_name = data.get("name", "User")
+            else:
+                self.show_access_denied(current_hwid, "Your license is inactive or blocked.")
+        except Exception as e:
+            self.show_access_denied(current_hwid, "Could not reach the license server.")
 
         self.root.deiconify() # Show root again
-        self.root.title("Ultimate Outreach Bot (Pro Edition)")
+        self.root.title(f"Ultimate Outreach Bot - Welcome {self.user_name}")
+
+    def show_access_denied(self, hwid, reason):
+        denied_win = tk.Toplevel(self.root)
+        denied_win.title("Access Denied")
+        denied_win.geometry("400x300")
+        denied_win.configure(bg="#f8d7da")
+        denied_win.attributes("-topmost", True)
+        
+        tk.Label(denied_win, text="🚫 ACCESS RESTRICTED", font=("Arial", 16, "bold"), fg="#721c24", bg="#f8d7da").pack(pady=20)
+        tk.Label(denied_win, text=reason, wraplength=350, bg="#f8d7da").pack()
+        
+        tk.Label(denied_win, text="\nYour Hardware ID (HWID):", bg="#f8d7da", font=("Arial", 10, "bold")).pack()
+        hwid_entry = tk.Entry(denied_win, font=("Consolas", 11), justify="center", width=30)
+        hwid_entry.insert(0, hwid)
+        hwid_entry.config(state="readonly")
+        hwid_entry.pack(pady=10)
+        
+        def copy_hwid():
+            self.root.clipboard_clear()
+            self.root.clipboard_append(hwid)
+            messagebox.showinfo("Copied", "HWID copied to clipboard! Send this to the CEO.")
+
+        tk.Button(denied_win, text="📋 COPY HWID & CLOSE", command=copy_hwid, bg="#721c24", fg="white", font=("Arial", 10, "bold"), padx=20, pady=10).pack(pady=20)
+        
+        denied_win.protocol("WM_DELETE_WINDOW", sys.exit)
+        self.root.wait_window(denied_win)
+        sys.exit()
+
+        self.root.deiconify() # Show root again
+        self.root.title(f"Ultimate Outreach Bot - Welcome {self.user_name}")
         self.root.geometry("700x850")
         self.root.configure(bg="#fdfdfd")
         
