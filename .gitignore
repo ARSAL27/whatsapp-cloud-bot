@@ -1,5 +1,11 @@
 node_modules/
-uploads/
-.env
 .wwebjs_auth/
 .wwebjs_cache/
+build/
+dist/
+*.spec
+*.exe
+__pycache__/
+*.pyc
+uploads/
+.env
